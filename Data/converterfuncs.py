@@ -60,10 +60,9 @@ def csvreader(filelist):
             j.rename(columns={'Datum Zeit': 'Time'}, inplace=True)
         else:
             pass
-        # print(i)
+        #print(i)
         try:
             j['Time'] = pd.to_datetime(j['Time'], format='%d.%m.%y %H:%M:%S')
-
         except:
             try:
                 j['Time'] = pd.to_datetime(j['Time'], format='%d.%m.%Y %H:%M:%S')
