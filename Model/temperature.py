@@ -1,117 +1,98 @@
+import matplotlib.pyplot as plt
+import pandas as pd
+import xarray as xr
+import numpy as np
+#from netCDF4 import Dataset
+import netCDF4
+import xarray as xr
 import torch
-from torch import nn
-import torch.nn.functional as F
-import torch.optim as optim
-torch.manual_seed(1)
-from torch.utils.data import DataLoader
-from torchvision import datasets
-from torchvision.transforms import ToTensor
-print(torch.cuda.is_available())
+from torch.autograd import Variable
 
-lstm=nn.LSTM(24,24)
+from torch.utils.data import Dataset, DataLoader
 
-# Download training data from open datasets.
-training_data = datasets.FashionMNIST(
-    root="data",
-    train=True,
-    download=True,
-    transform=ToTensor(),
-)
+class NetCDFDataset(Dataset):
+    def __init__(self, file_path, sliding_window_size):
+        self.dataset = xr.open_dataset(file_path)
+        self.sliding_window_size = sliding_window_size
 
-# Download test data from open datasets.
-test_data = datasets.FashionMNIST(
-    root="data",
-    train=False,
-    download=True,
-    transform=ToTensor(),
-)
+    def __len__(self):
+        return len(self.dataset['temp'])
 
-batch_size = 64
+    def __getitem__(self, index):
+        start_index = max(0, index - self.sliding_window_size + 1)
+        end_index = index + 1
 
-# Create data loaders.
-train_dataloader = DataLoader(training_data, batch_size=batch_size)
-test_dataloader = DataLoader(test_data, batch_size=batch_size)
+        temperature = self.dataset['temp'][start_index:end_index].values
+        if temperature.shape[0] < self.sliding_window_size:
+            temperature = np.pad(temperature, [(self.sliding_window_size - temperature.shape[0], 0)],
+                                 mode='constant')
 
-for X, y in test_dataloader:
-    print(f"Shape of X [N, C, H, W]: {X.shape}")
-    print(f"Shape of y: {y.shape} {y.dtype}")
-    break
+        #print(temperature)
+        # Füge hier weitere Variablen hinzu, falls nötig
+
+        return temperature
 
 
+file_path = '../Data/zehner/normal/2008_normal_zehner.nc'
+sliding_window_size = 5  # Größe des Sliding-Window
 
-# Get cpu, gpu or mps device for training.
-device = (
-    "cuda"
-    if torch.cuda.is_available()
-    else "mps"
-    if torch.backends.mps.is_available()
-    else "cpu"
-)
-print(f"Using {device} device")
-
-# Define model
-class NeuralNetwork(nn.Module):
-    def __init__(self):
-        super().__init__()
-        self.flatten = nn.Flatten()
-        self.linear_relu_stack = nn.Sequential(
-            nn.Linear(28*28, 512),
-            nn.ReLU(),
-            nn.Linear(512, 512),
-            nn.ReLU(),
-            nn.Linear(512, 10)
-        )
+dataset = NetCDFDataset(file_path, sliding_window_size)
+print(dataset)
+dataloader = DataLoader(dataset, batch_size=10, shuffle=False)
+print(dataloader)
+class LSTMModel(torch.nn.Module):
+    def __init__(self, input_size, hidden_size, num_layers, output_size):
+        super(LSTMModel, self).__init__()
+        self.hidden_size = hidden_size
+        self.num_layers = num_layers
+        self.lstm = torch.nn.LSTM(input_size, hidden_size, num_layers, batch_first=True)
+        self.fc = torch.nn.Linear(hidden_size, output_size)
 
     def forward(self, x):
-        x = self.flatten(x)
-        logits = self.linear_relu_stack(x)
-        return logits
 
-model = NeuralNetwork().to(device)
-print(model)
+        print(x.size())
+        h_0 = Variable(torch.zeros(
+            self.num_layers, x.size(0), self.hidden_size)).to(device).squeeze()
 
-loss_fn = nn.CrossEntropyLoss()
-optimizer = torch.optim.SGD(model.parameters(), lr=1e-3)
+        c_0 = Variable(torch.zeros(
+            self.num_layers, x.size(0), self.hidden_size)).to(device).squeeze()
 
-def train(dataloader, model, loss_fn, optimizer):
-    size = len(dataloader.dataset)
-    model.train()
-    for batch, (X, y) in enumerate(dataloader):
-        X, y = X.to(device), y.to(device)
+        # Propagate input through LSTM
+        ula, (h_out, _) = self.lstm(x, (h_0, c_0))
 
-        # Compute prediction error
-        pred = model(X)
-        loss = loss_fn(pred, y)
+        h_out = h_out.view(-1, self.hidden_size)
 
-        # Backpropagation
+        out = self.fc(h_out)
+
+
+        return out
+
+
+input_size = 1  # Je nach Anzahl der Variablen anpassen
+hidden_size = 64
+num_layers = 2
+output_size = 1
+
+model = LSTMModel(input_size, hidden_size, num_layers, output_size)
+device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')  # Verwende die GPU, falls verfügbar
+model.to(device)
+criterion = torch.nn.MSELoss()
+optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
+
+num_epochs = 10
+
+for epoch in range(num_epochs):
+    for batch in dataloader:
+        batch = batch.to(device)
+        print(batch)
+        targets = torch.zeros(batch.shape[0], output_size).to(device)
+        # Vorwärtsdurchlauf
+        outputs = model(batch)
+        loss = criterion(outputs, targets)  # Definiere deine Zielfunktion entsprechend
+
+        # Rückwärtsdurchlauf und Optimierung
+        optimizer.zero_grad()
         loss.backward()
         optimizer.step()
-        optimizer.zero_grad()
 
-        if batch % 100 == 0:
-            loss, current = loss.item(), (batch + 1) * len(X)
-            print(f"loss: {loss:>7f}  [{current:>5d}/{size:>5d}]")
-
-def test(dataloader, model, loss_fn):
-    size = len(dataloader.dataset)
-    num_batches = len(dataloader)
-    model.eval()
-    test_loss, correct = 0, 0
-    with torch.no_grad():
-        for X, y in dataloader:
-            X, y = X.to(device), y.to(device)
-            pred = model(X)
-            test_loss += loss_fn(pred, y).item()
-            correct += (pred.argmax(1) == y).type(torch.float).sum().item()
-    test_loss /= num_batches
-    correct /= size
-    print(f"Test Error: \n Accuracy: {(100*correct):>0.1f}%, Avg loss: {test_loss:>8f} \n")
-
-epochs = 10
-for t in range(epochs):
-    print(f"Epoch {t+1}\n-------------------------------")
-    train(train_dataloader, model, loss_fn, optimizer)
-    test(test_dataloader, model, loss_fn)
-print("Done!")
-torch.save(model.state_dict(), "temperature.pth")
-print("Saved PyTorch Model State to temperature.pth")
+    print(f'Epoch [{epoch+1}/{num_epochs}], Loss: {loss.item():.4f}')
