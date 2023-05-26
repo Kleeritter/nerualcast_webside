@@ -10,28 +10,7 @@ from torch.autograd import Variable
 
 from torch.utils.data import Dataset, DataLoader
 
-class NetCDFDataset(Dataset):
-    def __init__(self, file_path, sliding_window_size):
-        self.dataset = xr.open_dataset(file_path)
-        self.sliding_window_size = sliding_window_size
-
-    def __len__(self):
-        return len(self.dataset['temp'])
-
-    def __getitem__(self, index):
-        start_index = max(0, index - self.sliding_window_size + 1)
-        end_index = index + 1
-
-        temperature = self.dataset['temp'][start_index:end_index].values
-        if temperature.shape[0] < self.sliding_window_size:
-            temperature = np.pad(temperature, [(self.sliding_window_size - temperature.shape[0], 0)],
-                                 mode='constant')
-
-        #print(temperature)
-        # Füge hier weitere Variablen hinzu, falls nötig
-
-        return temperature
-
+from funcs import NetCDFDataset
 
 file_path = '../Data/zehner/normal/2008_normal_zehner.nc'
 sliding_window_size = 5  # Größe des Sliding-Window

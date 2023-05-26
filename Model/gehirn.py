@@ -22,7 +22,12 @@ class TemperatureDataset(Dataset):
 
         # Normalize window data and target
         window_data = (window_data - np.mean(window_data)) / np.std(window_data)
-        target = (target - np.mean(target)) / np.std(target)
+        std_target = np.std(target)
+        if std_target != 0:
+            target = (target - np.mean(target)) / std_target
+        else:
+            # Handle the case when the standard deviation is zero
+            target = np.zeros_like(target)  # Set the normalized target to zero or any other appropriate value
 
         # Reshape window data and target because of wrong directions
         window_data = window_data.reshape((window_size, 1))
