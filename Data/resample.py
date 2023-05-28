@@ -3,8 +3,9 @@ import pandas as pd
 import glob
 import numpy as np
 # Öffnen der NetCDF-Datei und Auswählen der Variablen, die resampled werden sollen
-filelist=glob.glob("einer/*.nc")
-years=np.arange(2022,2007,-1)
+filelist=sorted(glob.glob("/home/alex/Downloads/Dator/*.nc"))
+#years=np.arange(2022,2007,-1)
+years= np.arange(2007,2023,1)
 #print(len(filelist))
 def resample_zehner(filelist,years):
     for i in range(len(filelist)):
@@ -51,7 +52,9 @@ def resample_zehner(filelist,years):
 def resample_stunden(filelist, years):
     for i in range(len(filelist)):
         print(years[i])
+        print(filelist[i])
         ds = xr.open_dataset(filelist[i])
+        print(len(ds["time"]))
         time_index = pd.to_datetime(ds['time'].values, unit='s')
         # values =xr.Dataset(coords=dict(time=ds["time"].resample(time="10T",origin="epoch")))
         vars = ["humid", "temp", "press", "press_sl", "dewpoint_calc", "ptd", "ptm", "wind_10", "wind_50",
@@ -85,6 +88,10 @@ def resample_stunden(filelist, years):
         ds.close()
     return
 
-
-resample_zehner(filelist,years)
-resample_stunden(filelist,years)
+for i in range(len(filelist)):
+    print(years[i])
+    print(filelist[i])
+    ds = xr.open_dataset(filelist[i])
+    print(len(ds["time"]))
+#resample_zehner(filelist,years)
+#resample_stunden(filelist,years)
