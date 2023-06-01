@@ -7,7 +7,7 @@ import xarray as xr
 combined_dataset = xr.Dataset()
 
 # Iterieren Sie über die Jahre 2010-2014
-for year in range(2013, 2017):
+for year in range(2016, 2019):
     input_file = f"stunden/{year}_resample_stunden.nc"  # Annahme: Die Dateien haben das Format "datei_<jahr>.nc"
 
     # Überprüfen Sie, ob die Eingabedatei existiert
@@ -20,7 +20,7 @@ for year in range(2013, 2017):
         input_dataset.close()  # Schließen Sie die Eingabedatei
 
 # Speichern Sie das kombinierte Dataset in eine neue Datei
-output_file = "zusammengefasste_datei.nc"
+output_file = "zusammengefasste_datei_2016-2019.nc"
 combined_dataset.to_netcdf(output_file)
 
 # Schließen Sie das kombinierte Dataset

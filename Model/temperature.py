@@ -1,16 +1,10 @@
-import matplotlib.pyplot as plt
-import pandas as pd
-import xarray as xr
-import numpy as np
 #from netCDF4 import Dataset
-import netCDF4
-import xarray as xr
 import torch
 from torch.autograd import Variable
 
-from torch.utils.data import Dataset, DataLoader
+from torch.utils.data import DataLoader
 
-from funcs import NetCDFDataset
+from Model.old.funcs import NetCDFDataset
 
 file_path = '../Data/zehner/normal/2008_normal_zehner.nc'
 sliding_window_size = 5  # Größe des Sliding-Window
