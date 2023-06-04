@@ -20,9 +20,6 @@ def normalize(folder):
                 data = ds["wind_dir_50"].values.reshape(-1, 1)  # .reshape(-1,1)
                 # Windrichtungen auf den Bereich von 0 bis 360 Grad normalisieren
                 normalized_directions = data % 360
-
-                # Windrichtungen in numerische Werte umwandeln (0 bis (Anzahl der einzigartigen Richtungen - 1))
-                # Windrichtungen in numerische Werte umwandeln (0 bis 7)
                 numeric_directions = (normalized_directions / 45).astype(int) % 8
 
                 encoder = preprocessing.OneHotEncoder(sparse=False, categories="auto")

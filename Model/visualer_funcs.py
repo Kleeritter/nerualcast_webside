@@ -2,7 +2,7 @@ def start_index_real(nc_path,gesuchtes_datum):
     import xarray as xr
     data = xr.open_dataset(nc_path)
     dataf = data.to_dataframe()
-    start_index_real = dataf.index.get_loc(gesuchtes_datum)-1
+    start_index_real = dataf.index.get_loc(gesuchtes_datum)-24
     return start_index_real
 def end_index_real(nc_path,gesuchtes_datum):
     import xarray as xr

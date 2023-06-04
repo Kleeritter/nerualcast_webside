@@ -5,6 +5,10 @@ import matplotlib.pyplot as plt
 from visualer_funcs import lstm_uni, multilstm_full,multilstm_light,start_index_test,start_index_real,end_index_test,end_index_real
 from datetime import datetime
 import pandas as pd
+import numpy as np
+import itertools
+from trad.sarima import sarima
+from trad.p_ro import pp
 # Passe den Dateipfad entsprechend an
 
 
@@ -16,7 +20,7 @@ nc_path = '../Data/stunden/2022_resample_stunden.nc'
 import xarray as xr
 
 data = xr.open_dataset(nc_path)
-wintertag = pd.to_datetime("2022-01-16 00:00")  # Datum im datetime64-Format
+wintertag = pd.to_datetime("2022-12-24 00:00")  # Datum im datetime64-Format
 sommmertag=pd.to_datetime("2022-07-16 00:00")
 frühlingstag = pd.to_datetime("2022-04-16 00:00")  # Datum im datetime64-Format
 herbsttag=pd.to_datetime("2022-10-16 00:00")
@@ -50,43 +54,52 @@ sns.set_theme(style="darkgrid")
 #plt.title('Vorhersagequalität des LSTM-Modells')
 #plt.legend()
 #plt.show()
-Messsomer =data['temp'][start_index_real(nc_path,sommmertag):end_index_real(nc_path,sommmertag)].values.reshape((25,))
-Messwinter =data['temp'][start_index_real(nc_path,wintertag):end_index_real(nc_path,wintertag)].values.reshape((25,))
-Messfrühling=data['temp'][start_index_real(nc_path,frühlingstag):end_index_real(nc_path,frühlingstag)].values.reshape((25,))
-Messherbst=  data['temp'][start_index_real(nc_path,herbsttag):end_index_real(nc_path,herbsttag)].values.reshape((25,))
-
-print(Messfrühling)#[Messsomer[0]]+lstm_uni("output/lstm_model_frisch.pth",singledata_sommer,start_index=start_index_test(nc_path,sommmertag),end_index=end_index_test(nc_path,sommmertag))) #.insert(0, Messsomer[0]))
+Messsomer =data['temp'][start_index_real(nc_path,sommmertag):end_index_real(nc_path,sommmertag)].values.reshape((48,))
+Messwinter =data['temp'][start_index_real(nc_path,wintertag):end_index_real(nc_path,wintertag)].values.reshape((48,))
+Messfrühling=data['temp'][start_index_real(nc_path,frühlingstag):end_index_real(nc_path,frühlingstag)].values.reshape((48,))
+Messherbst=  data['temp'][start_index_real(nc_path,herbsttag):end_index_real(nc_path,herbsttag)].values.reshape((48,))
+print(Messsomer[0:24])
+print(len(list(itertools.chain(Messsomer[0:24],lstm_uni("output/lstm_model_frisch.pth",singledata_sommer,start_index=start_index_test(nc_path,sommmertag),end_index=end_index_test(nc_path,sommmertag))))))
+#print([Messfrühling[0:24]])#[Messsomer[0]]+lstm_uni("output/lstm_model_frisch.pth",singledata_sommer,start_index=start_index_test(nc_path,sommmertag),end_index=end_index_test(nc_path,sommmertag))) #.insert(0, Messsomer[0]))
 
 sommer=pd.DataFrame({
     'Datum': time_prog[start_index_real(nc_path,sommmertag):end_index_real(nc_path,sommmertag)],#pd.date_range(start='2023-01-01', periods=100, freq='D'),
     'Messdaten' : Messsomer,
-    'Univariantes LSTM': [Messsomer[0]]+lstm_uni("output/lstm_model_frisch.pth",singledata_sommer,start_index=start_index_test(nc_path,sommmertag),end_index=end_index_test(nc_path,sommmertag)),#.insert(0, Messsomer[0]),
-    'Multivariantes LSTM_3':[Messsomer[0]]+multilstm_light("output/lstm_model_multi_3var.pth",data_ligth,start_idx=start_index_test(nc_path,sommmertag),end_idx=end_index_test(nc_path,sommmertag)),#.insert(0, Messsomer[0]),
-    'Multivariantes LSTM_9': [Messsomer[0]]+multilstm_full("output/lstm_model_multi_9var.pth",data_full,start_idx=start_index_test(nc_path,sommmertag),end_idx=end_index_test(nc_path,sommmertag))#.insert(0, Messsomer[0])
+    'Univariantes LSTM': list(itertools.chain(Messsomer[0:24],lstm_uni("output/lstm_model_frisch.pth",singledata_sommer,start_index=start_index_test(nc_path,sommmertag),end_index=end_index_test(nc_path,sommmertag)))),#.insert(0, Messsomer[0]),
+    #'Multivariantes LSTM_3': list(itertools.chain(Messsomer[0:24],multilstm_light("output/lstm_model_multi_3var.pth",data_ligth,start_idx=start_index_test(nc_path,sommmertag),end_idx=end_index_test(nc_path,sommmertag)))),#.insert(0, Messsomer[0:24]),
+    'Multivariantes LSTM': list(itertools.chain(Messsomer[0:24],multilstm_full("output/lstm_model_multi_9var.pth",data_full,start_idx=start_index_test(nc_path,sommmertag),end_idx=end_index_test(nc_path,sommmertag)))),#.insert(0, Messsomer[0:24])
+    'SARIMA' : list(itertools.chain(Messsomer[0:24],sarima(nc_path,sommmertag))),
+    'PROPHET' : list(itertools.chain(Messsomer[0:24],pp(nc_path,sommmertag)))
 })
 
 winter=pd.DataFrame({
     'Datum': time_prog[start_index_real(nc_path,wintertag):end_index_real(nc_path,wintertag)],#pd.date_range(start='2023-01-01', periods=100, freq='D'),
     'Messdaten' : Messwinter,
-    'Univariantes LSTM': [Messwinter[0]]+lstm_uni("output/lstm_model_frisch.pth",singledata_sommer,start_index=start_index_test(nc_path,wintertag),end_index=end_index_test(nc_path,wintertag)),#.insert(0, Messwinter[0]),
-    'Multivariantes LSTM_3':[Messwinter[0]]+multilstm_light("output/lstm_model_multi_3var.pth",data_ligth,start_idx=start_index_test(nc_path,wintertag),end_idx=end_index_test(nc_path,wintertag)),#.insert(0, Messwinter[0]),
-    'Multivariantes LSTM_9': [Messwinter[0]]+multilstm_full("output/lstm_model_multi_9var.pth",data_full,start_idx=start_index_test(nc_path,wintertag),end_idx=end_index_test(nc_path,wintertag))#.insert(0, Messwinter[0])
+    'Univariantes LSTM': list(itertools.chain(Messwinter[0:24],lstm_uni("output/lstm_model_frisch.pth",singledata_sommer,start_index=start_index_test(nc_path,wintertag),end_index=end_index_test(nc_path,wintertag)))),#.insert(0, Messwinter[0:24]),
+    #'Multivariantes LSTM_3':list(itertools.chain(Messwinter[0:24],multilstm_light("output/lstm_model_multi_3var.pth",data_ligth,start_idx=start_index_test(nc_path,wintertag),end_idx=end_index_test(nc_path,wintertag)))),#.insert(0, Messwinter[0:24]),
+    'Multivariantes LSTM':list(itertools.chain(Messwinter[0:24],multilstm_full("output/lstm_model_multi_9var.pth",data_full,start_idx=start_index_test(nc_path,wintertag),end_idx=end_index_test(nc_path,wintertag)))),#.insert(0, Messwinter[0:24])
+    'SARIMA' : list(itertools.chain(Messwinter[0:24],sarima(nc_path,wintertag))),
+    'PROPHET' : list(itertools.chain(Messwinter[0:24],pp(nc_path,wintertag)))
 })
 
 herbst=pd.DataFrame({
     'Datum': time_prog[start_index_real(nc_path,herbsttag):end_index_real(nc_path,herbsttag)],#pd.date_range(start='2023-01-01', periods=100, freq='D'),
     'Messdaten' :Messherbst,
-    'Univariantes LSTM': [Messherbst[0]]+lstm_uni("output/lstm_model_frisch.pth",singledata_sommer,start_index=start_index_test(nc_path,herbsttag),end_index=end_index_test(nc_path,herbsttag)),#.insert(0, Messherbst[0]),
-    'Multivariantes LSTM_3':[Messherbst[0]]+multilstm_light("output/lstm_model_multi_3var.pth",data_ligth,start_idx=start_index_test(nc_path,herbsttag),end_idx=end_index_test(nc_path,herbsttag)),#.insert(0, Messherbst[0]),
-    'Multivariantes LSTM_9': [Messherbst[0]]+multilstm_full("output/lstm_model_multi_9var.pth",data_full,start_idx=start_index_test(nc_path,herbsttag),end_idx=end_index_test(nc_path,herbsttag))#.insert(0, Messherbst[0])
+    'Univariantes LSTM': list(itertools.chain(Messherbst[0:24],lstm_uni("output/lstm_model_frisch.pth",singledata_sommer,start_index=start_index_test(nc_path,herbsttag),end_index=end_index_test(nc_path,herbsttag)))),#.insert(0, Messherbst[0:24]),
+    #'Multivariantes LSTM_3':list(itertools.chain(Messherbst[0:24],multilstm_light("output/lstm_model_multi_3var.pth",data_ligth,start_idx=start_index_test(nc_path,herbsttag),end_idx=end_index_test(nc_path,herbsttag)))),#.insert(0, Messherbst[0:24]),
+    'Multivariantes LSTM': list(itertools.chain(Messherbst[0:24],multilstm_full("output/lstm_model_multi_9var.pth",data_full,start_idx=start_index_test(nc_path,herbsttag),end_idx=end_index_test(nc_path,herbsttag)))),
+    'SARIMA' : list(itertools.chain(Messherbst[0:24],sarima(nc_path,herbsttag))),
+    'PROPHET' : list(itertools.chain(Messherbst[0:24],pp(nc_path,herbsttag)))
 })
 
 frühling=pd.DataFrame({
     'Datum': time_prog[start_index_real(nc_path,frühlingstag):end_index_real(nc_path,frühlingstag)],#pd.date_range(start='2023-01-01', periods=100, freq='D'),
     'Messdaten' :Messfrühling ,
-    'Univariantes LSTM': [Messfrühling[0]]+lstm_uni("output/lstm_model_frisch.pth",singledata_sommer,start_index=start_index_test(nc_path,frühlingstag),end_index=end_index_test(nc_path,frühlingstag)),#.insert(0, Messfrühling[0]),
-    'Multivariantes LSTM_3':[Messfrühling[0]]+multilstm_light("output/lstm_model_multi_3var.pth",data_ligth,start_idx=start_index_test(nc_path,frühlingstag),end_idx=end_index_test(nc_path,frühlingstag)),#.insert(0, Messfrühling[0]),
-    'Multivariantes LSTM_9': [Messfrühling[0]]+multilstm_full("output/lstm_model_multi_9var.pth",data_full,start_idx=start_index_test(nc_path,frühlingstag),end_idx=end_index_test(nc_path,frühlingstag))#.insert(0, Messfrühling[0])
+    'Univariantes LSTM': list(itertools.chain(Messfrühling[0:24],lstm_uni("output/lstm_model_frisch.pth",singledata_sommer,start_index=start_index_test(nc_path,frühlingstag),end_index=end_index_test(nc_path,frühlingstag)))),#.insert(0, Messfrühling[0:24]),
+    #'Multivariantes LSTM_3':list(itertools.chain(Messfrühling[0:24],multilstm_light("output/lstm_model_multi_3var.pth",data_ligth,start_idx=start_index_test(nc_path,frühlingstag),end_idx=end_index_test(nc_path,frühlingstag)))),#.insert(0, Messfrühling[0:24]),
+    'Multivariantes LSTM': list(itertools.chain(Messfrühling[0:24],multilstm_full("output/lstm_model_multi_9var.pth",data_full,start_idx=start_index_test(nc_path,frühlingstag),end_idx=end_index_test(nc_path,frühlingstag)))),
+    'SARIMA' : list(itertools.chain(Messfrühling[0:24],sarima(nc_path,frühlingstag))),
+    'PROPHET' : list(itertools.chain(Messfrühling[0:24],pp(nc_path,frühlingstag)))
 })
 
 fig, axs= plt.subplots(2,2,figsize=(12,8))
