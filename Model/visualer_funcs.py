@@ -173,3 +173,92 @@ def multilstm_light(modell,data,start_idx,end_idx):
     #denormalized_values=np.arange(0,len(denormalized_values))
     #print(denormalized_values)
     return denormalized_values
+
+
+def convlstm(modell,data,start_idx,end_idx):
+    from funcs import TemperatureModel_multi_full, TemperatureModel_multi_light
+    import numpy as np
+    import torch
+    from sklearn import preprocessing
+    checkpoint_path = modell
+    checkpoint = torch.load(checkpoint_path)
+    #print(checkpoint.keys())
+
+    # Passe die Architektur deines LSTM-Modells entsprechend an
+    model = TemperatureModel_multi_full()  # Ersetze "YourLSTMModel" durch den tatsächlichen Namen deines Modells
+    model.load_state_dict(checkpoint)  # ['state_dict'])
+    model.eval()
+    sliding_window = []  # Liste für das Sliding Window
+    window_size = 6
+    num_channels = 17
+    # Führe die Vorhersage für die ersten 24 Stunden durch
+    predicted_values = []
+    window_data = data.isel(index=slice(start_idx, end_idx)).to_array().values
+    # Überprüfe, ob dies der letzte Batch ist
+
+    window_data_normalized = np.zeros((window_size, num_channels))
+    # print(window_data_normalized.shape)
+    # print(window_data[0])
+    # Order of channels: air temperature, relative humidity, air pressure, cloud coverage,
+    # wind speed, wind direction (one-hot encoded), hourly precipitation, month, hour
+
+    window_data_normalized[:, 0] = (window_data[0] - np.mean(window_data[0])) / np.std(
+        window_data[0])  # air temperature
+    window_data_normalized[:, 1] = (window_data[1] - np.mean(window_data[1])) / np.std(
+        window_data[1])  # air pressure
+    window_data_normalized[:, 2] = (window_data[2] - np.mean(window_data[2])) / np.std(
+        window_data[2])  # humid
+    window_data_normalized[:, 3] = (window_data[3] - np.mean(window_data[3])) / np.std(
+        window_data[3])  # Globalstrahlung
+    if np.std(window_data[4]) != 0:
+        window_data_normalized[:, 4] = (window_data[4] - np.mean(window_data[4])) / np.std(
+            window_data[4])  # gust_10
+    else:
+        window_data_normalized[:, 4] = np.zeros_like(window_data_normalized[:, 4])
+
+    window_data_normalized[:, 5] = (window_data[5] - np.mean(window_data[5])) / np.std(
+        window_data[5])  # gust_50
+    if np.std(window_data[6]) != 0:
+        window_data_normalized[:, 6] = (window_data[6] - np.mean(window_data[6])) / np.std(
+            window_data[6])  # hourly precipitation
+    else:
+        window_data_normalized[:, 6] = np.zeros_like(window_data_normalized[:, 6])
+    if np.std(window_data[7]) != 0:
+        window_data_normalized[:, 7] = (window_data[7] - np.mean(window_data[7])) / np.std(
+            window_data[7])  # wind_10
+    else:
+        window_data_normalized[:, 7] = np.zeros_like(window_data_normalized[:, 7])
+    window_data_normalized[:, 8] = (window_data[8] - np.mean(window_data[8])) / np.std(
+        window_data[8])  # wind_50
+    # print(window_data_normalized.shape)
+    # One-hot encode wind direction
+    wind_direction = window_data[9]
+    normalized_directions = wind_direction % 360
+    numeric_directions = (normalized_directions / 45).astype(int) % 8
+    encoder = preprocessing.OneHotEncoder(categories=[np.arange(8)], sparse_output=False)
+    enc = encoder.fit_transform(numeric_directions.reshape(-1, 1))
+
+    window_data_normalized[:, 9:] = enc
+    sliding_window= window_data_normalized
+    #original_mean = np.mean(sliding_window)  # original_data sind die nicht normalisierten Daten
+    #original_std = np.std(sliding_window)
+    #sliding_window = (sliding_window - np.mean(sliding_window)) / np.std(sliding_window)
+    # Berechnung des Durchschnitts und der Standardabweichung des Originaldatensatzes
+
+    #sliding_window=np.expand_dims(window_data_normalized, axis=0)
+    sliding_window = sliding_window.transpose(1, 0)
+    #print(sliding_window)
+    sliding_window=np.expand_dims(sliding_window, axis=0)
+
+    #sliding_window=np.expand_dims(sliding_window, axis=2)
+    #input_data = torch.Tensor(sliding_window)
+    input_data = torch.from_numpy(sliding_window).float()
+    with torch.no_grad():
+        predicted_value = model(input_data)
+    predicted_values.append(predicted_value.tolist())
+    predictions=predicted_value.squeeze().tolist()
+    #print(predictions)
+    denormalized_values = [(predicted_value *np.std(window_data[0]) )+ np.mean(window_data[0]) for predicted_value in predictions]
+    #denormalized_values=np.arange(0,len(denormalized_values))
+    #print(denormalized_values)
+    return denormalized_values

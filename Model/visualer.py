@@ -2,7 +2,7 @@ import torch
 import seaborn as sns
 import xarray as xr
 import matplotlib.pyplot as plt
-from visualer_funcs import lstm_uni, multilstm_full,multilstm_light,start_index_test,start_index_real,end_index_test,end_index_real
+from visualer_funcs import lstm_uni, multilstm_full,multilstm_light,start_index_test,start_index_real,end_index_test,end_index_real, convlstm
 from datetime import datetime
 import pandas as pd
 import numpy as np
@@ -68,8 +68,9 @@ sommer=pd.DataFrame({
     'Univariantes LSTM': list(itertools.chain(Messsomer[0:24],lstm_uni("output/lstm_model_frisch.pth",singledata_sommer,start_index=start_index_test(nc_path,sommmertag),end_index=end_index_test(nc_path,sommmertag)))),#.insert(0, Messsomer[0]),
     #'Multivariantes LSTM_3': list(itertools.chain(Messsomer[0:24],multilstm_light("output/lstm_model_multi_3var.pth",data_ligth,start_idx=start_index_test(nc_path,sommmertag),end_idx=end_index_test(nc_path,sommmertag)))),#.insert(0, Messsomer[0:24]),
     'Multivariantes LSTM': list(itertools.chain(Messsomer[0:24],multilstm_full("output/lstm_model_multi_9var.pth",data_full,start_idx=start_index_test(nc_path,sommmertag),end_idx=end_index_test(nc_path,sommmertag)))),#.insert(0, Messsomer[0:24])
-    'SARIMA' : list(itertools.chain(Messsomer[0:24],sarima(nc_path,sommmertag))),
-    'PROPHET' : list(itertools.chain(Messsomer[0:24],pp(nc_path,sommmertag)))
+    #'SARIMA' : list(itertools.chain(Messsomer[0:24],sarima(nc_path,sommmertag))),
+    #'PROPHET' : list(itertools.chain(Messsomer[0:24],pp(nc_path,sommmertag))),
+    #'CONV-LSTM':list(itertools.chain(Messsomer[0:24],convlstm("output/lstm_model_multi_9var.pth",data_full,start_idx=start_index_test(nc_path,sommmertag),end_idx=end_index_test(nc_path,sommmertag))))
 })
 
 winter=pd.DataFrame({
