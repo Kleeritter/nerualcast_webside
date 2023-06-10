@@ -20,4 +20,4 @@ trainer = pl.Trainer(max_epochs=1, accelerator="auto",devices="auto",val_check_i
 trainer.fit(model, train_loader,val_loader)
 
   # Verwende hier den entsprechenden Dataloader (z.B. val_loader)
-torch.save(model.state_dict(), '../output/lstm_model_old.pth')
+torch.save(model.state_dict(), '../output/old/lstm_model_old.pth')

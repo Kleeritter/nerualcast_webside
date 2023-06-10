@@ -1,4 +1,4 @@
-def pp(file,gesuchtes_datum):
+def pp(file,gesuchtes_datum,forecast_var):
     import pandas as pd
     from prophet import Prophet
 
@@ -14,9 +14,9 @@ def pp(file,gesuchtes_datum):
 
     #print(df)
     # Trainingsdaten: Die letzten 24 Stunden
-    startindex = df['temp'].index.get_loc(gesuchtes_datum) - (4 * 7 * 24)
-    endindex = df['temp'].index.get_loc(gesuchtes_datum)
-    temperature = df['temp'][startindex:endindex]
+    startindex = df[forecast_var].index.get_loc(gesuchtes_datum) - (4 * 7 * 24)
+    endindex = df[forecast_var].index.get_loc(gesuchtes_datum)
+    temperature = df[forecast_var][startindex:endindex]
 
     df = temperature.reset_index().rename(columns={'index': 'ds', 'temp': 'y'})
     train_data = df

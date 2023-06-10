@@ -1,4 +1,4 @@
-def sarima(file,gesuchtes_datum):
+def sarima(file,gesuchtes_datum,forecast_var):
     import pandas as pd
     import statsmodels.api as sm
     nc_path = file#'../Data/stunden/2022_resample_stunden.nc'
@@ -11,10 +11,10 @@ def sarima(file,gesuchtes_datum):
     # Bereiten Sie die Daten für das SARIMA-Modell vor
     # Nehmen wir an, Ihre Temperaturdaten sind in einer Spalte namens 'temperature'
 
-    startindex= df['temp'].index.get_loc(gesuchtes_datum)-(4*7*24)
-    endindex= df['temp'].index.get_loc(gesuchtes_datum)
-    temperature = df['temp'][startindex:endindex]
-    print(temperature)
+    startindex= df[forecast_var].index.get_loc(gesuchtes_datum)-(4*7*24)
+    endindex= df[forecast_var].index.get_loc(gesuchtes_datum)
+    temperature = df[forecast_var][startindex:endindex]
+    #print(temperature)
     # Trainingsdaten: Die letzten 4 Wochen
     #train_data = temperature[:-4*7*24]
     train_data= temperature
@@ -32,6 +32,6 @@ def sarima(file,gesuchtes_datum):
     confidence_interval = forecast.conf_int()
 
 # Drucken Sie die Vorhersageergebnisse
-    print(forecast_values.values)
+    #print(forecast_values.values)
     return forecast_values.values
 #print(confidence_interval)

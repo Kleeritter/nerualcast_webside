@@ -7,7 +7,7 @@ import numpy as np
 from datetime import datetime
 import pandas as pd
 # Passe den Dateipfad entsprechend an
-checkpoint_path = '../output/lstm_model_old.pth'
+checkpoint_path = '../output/old/lstm_model_old.pth'
 checkpoint = torch.load(checkpoint_path)
 print(checkpoint.keys())
 

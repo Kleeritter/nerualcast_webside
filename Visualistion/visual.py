@@ -4,7 +4,7 @@ import xarray as xr
 import matplotlib.pyplot as plt
 
 model = TemperatureModel()  # Erstelle ein neues Modellobjekt
-model.load_state_dict(torch.load('output/lstm_model_old.pth'))
+model.load_state_dict(torch.load('../Model/output/old/lstm_model_old.pth'))
 model.eval()  # Setze das Modell in den Evaluationsmodus
 
 selected_day_data = xr.open_dataset("../Data/stunden/2022_resample_stunden.nc")['temp'][0:24].values.reshape((24, 1))
