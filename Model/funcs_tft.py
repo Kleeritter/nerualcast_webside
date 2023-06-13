@@ -66,6 +66,7 @@ class TFT_Dataset(Dataset):
         window_data = torch.from_numpy(window_data).float()#[:, np.newaxis]).float()
         #print(window_data.shape)
         target = torch.from_numpy(target).float()
+        #print(len(target))
         #print(window_data.shape)
         return window_data, target
 
@@ -73,7 +74,7 @@ class TFT_Dataset(Dataset):
 
 
 class TFT_Modell(pl.LightningModule):
-    def __init__(self, input_dim, output_dim, hidden_dim, num_layers, num_heads,dropout=0.1):
+    def __init__(self, input_dim, output_dim, hidden_dim, num_layers, num_heads,dropout=0.1,forecast_horizont=24,window_size=24,forecast_var="temp"):
         super(TFT_Modell, self).__init__()
 
         self.input_dim = input_dim
@@ -102,6 +103,7 @@ class TFT_Modell(pl.LightningModule):
         # Ausgabe-Linear-Schicht
         self.fc = nn.Linear(hidden_dim, output_dim)
         self.do = nn.Dropout(p=self.dropout)
+        self.ff=nn.Linear(window_size,forecast_horizont)
         #self.positional_encoding = self.create_positional_encoding()
     def get_positional_encoding(self, d_model, max_len=1000):
         # Positionale Encoding-Schicht erzeugen
@@ -116,7 +118,7 @@ class TFT_Modell(pl.LightningModule):
         return positional_encoding
     def forward(self, x):
         # Eingabe-Embedding
-        print(x.shape)
+        #print(x.shape)
         x = self.embedding(x)
 
         # Positionale Codierung hinzufügen
@@ -126,10 +128,11 @@ class TFT_Modell(pl.LightningModule):
         x = self.encoder(x)
 
         # Decoder-Schichten
-        x = self.decoder(x)
+        x = self.decoder(x, memory=self.encoder(x))
 
         # Ausgabe-Linear-Schicht
         x = self.fc(x)
+        x=self.ff(torch.squeeze(x))
         return x
 
     def training_step(self, batch, batch_idx):

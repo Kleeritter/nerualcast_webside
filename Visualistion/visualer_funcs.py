@@ -132,6 +132,92 @@ def multilstm_full(modell,data,start_idx,end_idx,forecast_horizon=24,window_size
     #print(denormalized_values)
     return denormalized_values
 
+def tft(modell,data,start_idx,end_idx,forecast_horizon=24,window_size=24):
+    from Model.funcs_tft import TFT_Modell
+    import numpy as np
+    import torch
+    from sklearn import preprocessing
+    checkpoint_path = modell
+    checkpoint = torch.load(checkpoint_path)
+    print(end_idx-start_idx)
+    input_dim = 17  # Anzahl der meteorologischen Parameter
+    output_dim = 1  # Vorhersage der Temperatur
+
+    num_layers = 2
+    num_heads = 17
+    batch_size = 24
+    hidden_dim = 3 * num_heads
+    num_encoder_layers = 3
+    num_decoder_layers = 3
+    d_model = 17
+    dropout = 0.1
+
+    # Passe die Architektur deines LSTM-Modells entsprechend an
+    model = TFT_Modell(input_dim, output_dim, hidden_dim, num_layers, num_heads, forecast_horizont=forecast_horizon,
+                       window_size=window_size)
+    model.load_state_dict(checkpoint)  # ['state_dict'])
+    model.eval()
+    sliding_window = []  # Liste für das Sliding Window
+
+    # Führe die Vorhersage für die ersten 24 Stunden durch
+    predicted_values = []
+    window_data = data.isel(index=slice(start_idx, end_idx)).to_array().values
+    window_data_normalized = np.zeros((window_data.shape[0] + 7, window_size))  # np.zeros_like(window_data)
+    means=[]
+    stds=[]
+    for i in range(window_data.shape[0]):
+        if i != 9:
+            variable = window_data[i, :]
+            mean = np.mean(variable)
+            std = np.std(variable)
+            if std != 0:
+                variable_normalized = (variable - mean) / std
+            else:
+                variable_normalized = np.zeros_like(variable)
+            window_data_normalized[i, :] = variable_normalized
+        else:
+            variable = window_data[i, :]
+            normalized_directions = variable % 360
+            numeric_directions = (normalized_directions / 45).astype(int) % 8
+            # print(numeric_directions)
+            # windrichtungen = np.floor((variable % 360) / 45).astype(int)
+            # Einteilung der Werte in Richtungen
+            windrichtungen = ((variable + 22.5) // 45 % 8).astype(int)
+
+            # One-Hot-Encoding
+            encoder = preprocessing.OneHotEncoder(categories=[np.arange(8)], sparse_output=False)
+            enc = np.transpose(encoder.fit_transform(windrichtungen.reshape(-1, 1)))
+            # print(np.transpose(enc))
+            # print(enc)
+            for j in range(0, 7):
+                window_data_normalized[i + j, :] = enc[j]  #
+    sliding_window= window_data_normalized
+    stds.append(np.std(window_data[0]))
+    means.append(np.mean(window_data[0]))
+    #original_mean = np.mean(sliding_window)  # original_data sind die nicht normalisierten Daten
+    #original_std = np.std(sliding_window)
+    #sliding_window = (sliding_window - np.mean(sliding_window)) / np.std(sliding_window)
+    # Berechnung des Durchschnitts und der Standardabweichung des Originaldatensatzes
+
+    #sliding_window=np.expand_dims(window_data_normalized, axis=0)
+    sliding_window = sliding_window.transpose(1, 0)
+    #print(sliding_window)
+    sliding_window=np.expand_dims(sliding_window, axis=0)
+
+    #sliding_window=np.expand_dims(sliding_window, axis=2)
+    #input_data = torch.Tensor(sliding_window)
+    input_data = torch.from_numpy(sliding_window).float()
+    #print(input_data.shape)
+    with torch.no_grad():
+        predicted_value = model(input_data)
+    predicted_values.append(predicted_value.tolist())
+    predictions=predicted_value.squeeze().tolist()
+    #print(predicted_value.shape)
+    denormalized_values = [(predicted_value * stds[0] )+ means[0] for predicted_value in predictions]
+    #denormalized_values=np.arange(0,len(denormalized_values))
+    #print(denormalized_values)
+    return denormalized_values
+
 def multilstm_light(modell,data,start_idx,end_idx):
     from funcs import TemperatureModel_multi_full, TemperatureModel_multi_light
     import numpy as np
