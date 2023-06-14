@@ -1,10 +1,10 @@
 import torch
 import pytorch_lightning as pl
-from torch.utils.data import Dataset, DataLoader
+from torch.utils.data import DataLoader
 from pytorch_lightning import loggers
 from pytorch_lightning.callbacks.early_stopping import EarlyStopping
 from sklearn.model_selection import train_test_split
-from funcs_lstm_multi import TemperatureDataset_multi, TemperatureModel_multi_full
+from funcs.funcs_lstm_multi import TemperatureDataset_multi, TemperatureModel_multi_full
 
 forecast_var = 'temp'
 lite = '../Data/stunden/2016_resample_stunden.nc'

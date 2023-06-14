@@ -60,7 +60,7 @@ def resample_stunden(filelist, years):
         time_index = pd.to_datetime(ds['time'].values, unit='s')
         # values =xr.Dataset(coords=dict(time=ds["time"].resample(time="10T",origin="epoch")))
         vars = ["humid", "temp", "press", "press_sl", "dewpoint_calc", "ptd", "ptm", "wind_10", "wind_50",
-                "wind_dir_50", "gust_10", "gust_50", "rain","Geneigt CM-11"]# "globalrcm11"]
+                "wind_dir_50", "gust_10", "gust_50", "rain","Geneigt CM-11","globalrcm11","globalrcmp11"]# "globalrcm11"]
         values = ds[vars].isel(time=time_index.minute % 60 == 0)  # time_index.minute%10==0
         print(len(values["time"]))
         start_date = str(years[i])+'-01-01'
@@ -80,7 +80,11 @@ def resample_stunden(filelist, years):
                     values[var_name] = hourly_var
                     #df[var_name]=df.join(values[var_name]).asfreq('H')
                     # values.assign(var_name= hourly_var)
-
+                elif var_name== "wind_dir_50":
+                    hourly_var = ds[var_name].resample(time='1H', origin="epoch").mean()
+                    hourly_var[hourly_var < 0] = 0
+                    ds[var_name] = hourly_var
+                    values[var_name] = hourly_var
                 else:
                     hourly_var = ds[var_name].resample(time='1H', origin="epoch").mean()
                     ds[var_name] = hourly_var
@@ -106,7 +110,7 @@ def resample_stunden(filelist, years):
 
         # Entferne ganze Tage mit größeren Lücken
         df_cleaned = dfs.interpolate(method='linear')#dfs.drop(missing_days)
-        print(len(df_cleaned.index.tolist()))
+        df_cleaned.loc[df_cleaned['wind_dir_50'] < 0, 'wind_dir_50'] = 0   #     print(len(df_cleaned.index.tolist()))
         df_cleaned.to_xarray().to_netcdf("stunden/" + str(years[i]) + '_resample_stunden.nc')  # .asfreq(freq='10T', method='pad')
 
         ds.close()

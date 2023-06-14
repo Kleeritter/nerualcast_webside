@@ -1,30 +1,58 @@
 import torch
 import pytorch_lightning as pl
-import xarray as xr
-import numpy as np
-from torch.utils.data import Dataset, DataLoader
-from sklearn.model_selection import train_test_split
-import seaborn as sns
-import matplotlib.pyplot as plt
+from torch.utils.data import DataLoader
 from pytorch_lightning import loggers
 from pytorch_lightning.callbacks.early_stopping import EarlyStopping
-from funcs_lstm_single import TemperatureDataset, TemperatureModel
+from funcs.funcs_lstm_single  import TemperatureModel
+import random
+import numpy as np
 forecast_var = 'temp'
+# Setzen Sie die Zufallssaat für die GPU
+# Setze den Random Seed für PyTorch
+pl.seed_everything(42)
 
-lite = '../Data/stunden/2016_resample_stunden.nc'
-full='../Data/zusammengefasste_datei_2016-2019.nc'
-file_path =full # Replace with the actual path to your NetCDF file
+# Setze den Random Seed für torch
+torch.manual_seed(42)
 
-dataset = TemperatureDataset(file_path,window_size=4*7*24,forecast_horizont=24,forecast_var=forecast_var)
-train_data, val_data = train_test_split(dataset, test_size=0.3, random_state=42)
-train_loader = DataLoader(train_data, batch_size=24, shuffle=False,num_workers=8)
-val_loader = DataLoader(val_data, batch_size=24, shuffle=False,num_workers=8)#, sampler=torch.utils.data.SubsetRandomSampler(range(10)))
+# Setze den Random Seed für random
+random.seed(42)
 
-model = TemperatureModel()
-logger = loggers.TensorBoardLogger(save_dir='lightning_logs/lstm_uni/'+forecast_var, name='lstm_uni')
-early_stopping = EarlyStopping('val_loss', patience=10,mode='min')
-trainer = pl.Trainer(logger=logger,max_epochs=200, accelerator="auto",devices="auto",callbacks=[early_stopping],deterministic=True)#,val_check_interval=0.5) #log_every_n_steps=2,
+# Setze den Random Seed für numpy
+np.random.seed(42)
+
+
+
+
+#Hyper Parameters:
+window_size = 24*7*4#168
+learning_rate =0.00005#0.00028321349862445627
+weight_decay = 0.0001#6.814701853104705e-05#
+hidden_size = 32#64
+optimizer= "Adam"
+num_layers=1#2
+dropout=0#0.5
+weight_initializer="None" #"kaiming"
+
+training_data_path = 'opti/storage/training_data_lstm_single_train_' + forecast_var + "_" + str(window_size) + '.pt'
+val_data_path = 'opti/storage/training_data_lstm_single_val_' + forecast_var + "_" + str(window_size) + '.pt'
+train_data = torch.load(training_data_path)
+val_data = torch.load(val_data_path)
+
+    # Create data loaders for training and validation
+train_loader = DataLoader(train_data, batch_size=24, shuffle=False, num_workers=8)
+val_loader = DataLoader(val_data, batch_size=24, shuffle=False, num_workers=8)
+
+
+
+# Initialize the model with the suggested hyperparameters
+model = TemperatureModel(hidden_size=hidden_size, learning_rate=learning_rate, weight_decay=weight_decay,optimizer=optimizer,num_layers=num_layers,dropout=dropout)
+
+
+
+logger = loggers.TensorBoardLogger(save_dir='lightning_logs/lstm_uni/'+forecast_var, name='lstm_unoptimiert')
+early_stopping = EarlyStopping('val_loss', patience=5,mode='min')
+trainer = pl.Trainer(logger=logger,max_epochs=50, accelerator="auto",devices="auto",callbacks=[early_stopping],deterministic=True)#,val_check_interval=0.5) #log_every_n_steps=2,
 trainer.fit(model, train_loader,val_loader)
 
   # Verwende hier den entsprechenden Dataloader (z.B. val_loader)
-torch.save(model.state_dict(), 'output/lstm_uni/'+forecast_var+'.pth')
+torch.save(model.state_dict(), 'output/lstm_uni/'+forecast_var+'unoptimiert.pth')

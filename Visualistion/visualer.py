@@ -1,11 +1,11 @@
 import seaborn as sns
 import matplotlib.pyplot as plt
-from Visualistion.visualer_funcs import lstm_uni, multilstm_full, start_index_test,start_index_real,end_index_test,end_index_real, conv, tft
-from datetime import datetime
+from funcs.visualer_funcs import lstm_uni, multilstm_full, start_index_test,start_index_real,end_index_test,end_index_real, \
+    tft
 import pandas as pd
 import itertools
-from trad.sarima import sarima
-from trad.p_ro import pp
+from funcs.trad.sarima import sarima
+from funcs.trad.p_ro import pp
 import xarray as xr
 # Passe die folgenden Variablen entsprechend an
 forecast_var="temp" #Which variable to forecast

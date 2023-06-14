@@ -1,14 +1,11 @@
-import torch
 import seaborn as sns
-import xarray as xr
 import matplotlib.pyplot as plt
-from visualer_funcs import lstm_uni, multilstm_full,multilstm_light,start_index_test,start_index_real,end_index_test,end_index_real, conv
+from funcs.visualer_funcs import lstm_uni, multilstm_full, start_index_test,start_index_real,end_index_test,end_index_real, conv
 from datetime import datetime
 import pandas as pd
-import numpy as np
 import itertools
-from trad.sarima import sarima
-from trad.p_ro import pp
+from funcs.trad.sarima import sarima
+from funcs.trad.p_ro import pp
 # Passe den Dateipfad entsprechend an
 
 forecastvar="temp"
