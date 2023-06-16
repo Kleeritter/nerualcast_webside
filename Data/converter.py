@@ -52,7 +52,8 @@ def koks(year):
     dataall= dataall.apply(pd.to_numeric, errors='coerce')
     print(dataall.index[dataall.index.duplicated()])
     #dataall['Temperatur'] = pd.to_numeric(dataall['Temperatur'], errors='coerce')
-    #print(dataall.columns)
+    print(dataall.columns)
+    print(dataall["GlobalCMP-11(W/m2)"])
 
    #print(dataall["Temperatur"])
     string_found = False
@@ -330,14 +331,14 @@ def koks(year):
         pass
 
     try:
-        pyg[:]=dataall["GeneigtCM-11(W/m2)"]+273.15
+        pyg[:]=dataall["GeneigtCM-11(W/m2)"]
     except KeyError:
         pass
 
 
 
 
-years=np.arange(2007,2023,1)
+years=np.arange(2016,2023,1)
 
 #with Pool() as pool:
     #pool.map(koks, years)

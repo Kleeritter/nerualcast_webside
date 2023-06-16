@@ -60,7 +60,7 @@ def resample_stunden(filelist, years):
         time_index = pd.to_datetime(ds['time'].values, unit='s')
         # values =xr.Dataset(coords=dict(time=ds["time"].resample(time="10T",origin="epoch")))
         vars = ["humid", "temp", "press", "press_sl", "dewpoint_calc", "ptd", "ptm", "wind_10", "wind_50",
-                "wind_dir_50", "gust_10", "gust_50", "rain","Geneigt CM-11","globalrcm11","globalrcmp11"]# "globalrcm11"]
+                "wind_dir_50", "gust_10", "gust_50", "rain","Geneigt CM-11","diffuscmp11","globalrcmp11"]# "globalrcm11"]
         values = ds[vars].isel(time=time_index.minute % 60 == 0)  # time_index.minute%10==0
         print(len(values["time"]))
         start_date = str(years[i])+'-01-01'

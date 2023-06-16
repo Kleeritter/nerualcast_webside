@@ -146,7 +146,7 @@ def multilstm_full(modell,data,start_idx,end_idx,forecast_horizon=24,window_size
     return denormalized_values
 
 def tft(modell,data,start_idx,end_idx,forecast_horizon=24,window_size=24):
-    from Model.funcs_tft import TFT_Modell
+    from funcs.funcs_tft import TFT_Modell
     import numpy as np
     import torch
     from sklearn import preprocessing

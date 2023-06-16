@@ -1,14 +1,26 @@
 from sklearn import preprocessing
 import torch
-import pytorch_lightning as pl
-import xarray as xr
-import numpy as np
 from torch.utils.data import Dataset, DataLoader
 import torch.nn as nn
+import pytorch_lightning as pl
+import numpy as np
+import random
+import xarray as xr
+pl.seed_everything(42)
+
+# Setze den Random Seed für torch
+torch.manual_seed(42)
+
+# Setze den Random Seed für random
+random.seed(42)
+
+# Setze den Random Seed für numpy
+np.random.seed(42)
+
 
 class TemperatureDataset_multi(Dataset):
     def __init__(self, file_path,forecast_horizont=24,window_size=24,forecast_var="temp"):
-        self.data = xr.open_dataset(file_path)[['temp',"press_sl","humid","Geneigt CM-11","gust_10","gust_50", "rain", "wind_10", "wind_50","wind_dir_50"]]#.valuesmissing_values_mask = dataset['temp'].isnull()
+        self.data = xr.open_dataset(file_path)[["wind_dir_50","Geneigt CM-11",'temp',"press_sl","humid","diffuscmp11","globalrcmp11","gust_10","gust_50", "rain", "wind_10", "wind_50"]]#.valuesmissing_values_mask = dataset['temp'].isnull()
         self.length = len(self.data[forecast_var]) - window_size
         self.forecast_horizont = forecast_horizont
         self.window_size = window_size
@@ -22,11 +34,11 @@ class TemperatureDataset_multi(Dataset):
         end_idx = idx + self.window_size
         window_data = self.data.isel(index=slice(start_idx, end_idx)).to_array().values#self.data[start_idx:end_idx].values
         target = self.data[self.forecast_var][end_idx:end_idx+self.forecast_horizont].values
-        window_data_normalized = np.zeros((window_data.shape[0]+7,self.window_size))#np.zeros_like(window_data)
+        window_data_normalized = np.zeros((window_data.shape[0],self.window_size))#np.zeros_like(window_data)
         #print(window_data_normalized)
 
         for i in range(window_data.shape[0]):
-            if i != 9:
+            if i != 0:
                 variable = window_data[i, :]
                 mean = np.mean(variable)
                 std = np.std(variable)
@@ -37,26 +49,56 @@ class TemperatureDataset_multi(Dataset):
                 window_data_normalized[i, :] = variable_normalized
             else:
                 variable = window_data[i, :]
-                normalized_directions = variable % 360
-                numeric_directions = (normalized_directions / 45).astype(int) % 8
-                #print(numeric_directions)
-                #windrichtungen = np.floor((variable % 360) / 45).astype(int)
-                # Einteilung der Werte in Richtungen
-                windrichtungen = ((variable + 22.5) // 45 % 8).astype(int)
+                #print(variable)
+                #normalized_directions = variable % 360
+                #numeric_directions = (normalized_directions / 45).astype(int) % 8
+                #windrichtungen = ((variable + 22.5) // 45 % 8).astype(int)
+                #encoder = preprocessing.OneHotEncoder(categories=[np.arange(8)], sparse_output=False)
+                #enc =np.transpose(encoder.fit_transform(windrichtungen.reshape(-1, 1)))
+                #for j in range(0,7):
+                 #   window_data_normalized[i+j, :] = enc[j]#
+                wind_directions_rad = np.deg2rad(variable)
+                #print(wind_directions_rad)
+                # Berechnen des Durchschnitts der Windrichtungen in Bogenmaß
+                mean_direction_rad = np.mean(wind_directions_rad)
 
-                # One-Hot-Encoding
-                encoder = preprocessing.OneHotEncoder(categories=[np.arange(8)], sparse_output=False)
-                enc =np.transpose(encoder.fit_transform(windrichtungen.reshape(-1, 1)))
-                #print(np.transpose(enc))
-                #print(enc)
-                for j in range(0,7):
-                    window_data_normalized[i+j, :] = enc[j]#
-        #print(window_data_normalized)#len(window_data_normalized))
-        std_target = np.std(target)#, ddof=1)
-        if std_target != 0:
-            target = (target - np.mean(target)) / std_target
+                # Konvertieren des Durchschnitts zurück in Grad
+                mean_direction_deg = np.rad2deg(mean_direction_rad)
+
+                # Subtrahieren des mittleren Winkels von allen Windrichtungen
+                normalized_directions_deg = variable- mean_direction_deg
+                #print(normalized_directions_deg)
+                # Anpassen der negativen Werte auf den positiven Bereich (0-360 Grad)
+                normalized_directions_deg = (normalized_directions_deg + 360) % 360
+                #print(normalized_directions_deg)
+                window_data_normalized[i, :] = normalized_directions_deg
+
+        if self.forecast_var == "wind_dir_50":
+            try:
+                wind_directions_rad_tar = np.deg2rad(target)
+
+                # Berechnen des Durchschnitts der Windrichtungen in Bogenmaß
+                mean_direction_rad_tar = np.mean(wind_directions_rad_tar)
+
+                # Konvertieren des Durchschnitts zurück in Grad
+                mean_direction_deg_tar = np.rad2deg(mean_direction_rad_tar)
+
+                # Subtrahieren des mittleren Winkels von allen Windrichtungen
+                normalized_directions_deg_tar = target - mean_direction_deg_tar
+
+                # Anpassen der negativen Werte auf den positiven Bereich (0-360 Grad)
+                normalized_directions_deg_tar = (normalized_directions_deg_tar + 360) % 360
+
+                target = normalized_directions_deg_tar
+            except:
+                target = np.zeros_like(target)
+
         else:
-            target = np.zeros_like(target)
+            std_target = np.std(target)#, ddof=1)
+            if std_target != 0:
+                target = (target - np.mean(target)) / std_target
+            else:
+                target = np.zeros_like(target)
 
         # Check if target has exactly 24 hours, otherwise adjust it
         if target.shape[0] < self.forecast_horizont:
@@ -102,10 +144,14 @@ class TemperatureModel_multi_light(pl.LightningModule):
         return optimizer
 
 class TemperatureModel_multi_full(pl.LightningModule):
-    def __init__(self, window_size=24, forecast_horizont=24):
+    def __init__(self, window_size=24, forecast_horizont=24,num_layers=1,hidden_size=40, learning_rate=0.001, weight_decay=0.001):
         super().__init__()
-        self.lstm = torch.nn.LSTM(input_size=17, hidden_size=40, num_layers=1,batch_first=True)
-        self.linear = torch.nn.Linear(40, forecast_horizont)
+        self.num_layers = num_layers
+        self.hidden_size = hidden_size
+        self.learning_rate = learning_rate
+        self.weight_decay = weight_decay
+        self.lstm = torch.nn.LSTM(input_size=12, hidden_size=hidden_size, num_layers=num_layers,batch_first=True)
+        self.linear = torch.nn.Linear(hidden_size, forecast_horizont)
         self.apply(self.initialize_weights)
 
     def initialize_weights(self, module):
@@ -132,5 +178,5 @@ class TemperatureModel_multi_full(pl.LightningModule):
         self.log('val_loss', loss, prog_bar=False)
         return loss
     def configure_optimizers(self):
-        optimizer = torch.optim.Adam(self.parameters(), lr=0.001, weight_decay=0.001)  # weight_decay-Wert anpassen
+        optimizer = torch.optim.Adam(self.parameters(), lr=self.learning_rate, weight_decay=self.weight_decay)  # weight_decay-Wert anpassen
         return optimizer

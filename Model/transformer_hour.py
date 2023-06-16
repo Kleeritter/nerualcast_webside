@@ -1,11 +1,12 @@
 import torch
 import pytorch_lightning as pl
-from torch.utils.data import Dataset, DataLoader
+from torch.utils.data import DataLoader
 from pytorch_lightning import loggers
 from pytorch_lightning.callbacks.early_stopping import EarlyStopping
 from sklearn.model_selection import train_test_split
-from funcs_tft import TFT_Dataset,TFT_Modell
-from funcs_transformer_alt import TemperatureForecaster
+from funcs.funcs_tft import TFT_Dataset,TFT_Modell
+from funcs.funcs_lstm_multi import TemperatureDataset_multi
+
 
 forecast_var = 'temp'
 lite = '../Data/stunden/2016_resample_stunden.nc'
@@ -15,21 +16,21 @@ file_path =full # Replace with the actual path to your NetCDF file
 #Hyperparameter
 window_size=4*7*24
 forecast_horizont=24
-input_dim = 17  # Anzahl der meteorologischen Parameter
+input_dim = 12  # Anzahl der meteorologischen Parameter
 output_dim = 1  # Vorhersage der Temperatur
 
 num_layers = 2
-num_heads = 17
+num_heads = 4
 batch_size = 24
 hidden_dim = 3*num_heads
 num_encoder_layers = 3
 num_decoder_layers = 3
-d_model = 17
+d_model = 12
 dropout = 0.1
 
 
 
-dataset = TFT_Dataset(file_path,forecast_horizont=24,window_size=window_size,forecast_var=forecast_var)
+dataset = TemperatureDataset_multi(file_path,forecast_horizont=24,window_size=window_size,forecast_var=forecast_var)
 train_data, val_data = train_test_split(dataset, test_size=0.3, random_state=42)
 train_loader = DataLoader(train_data, batch_size=batch_size, shuffle=False,num_workers=8)
 val_loader = DataLoader(val_data, batch_size=batch_size, shuffle=False,num_workers=8)#, sampler=torch.utils.data.SubsetRandomSampler(range(10)))
