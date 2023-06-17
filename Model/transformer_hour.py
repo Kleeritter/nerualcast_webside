@@ -7,6 +7,7 @@ from sklearn.model_selection import train_test_split
 from funcs.funcs_tft import TFT_Dataset,TFT_Modell
 from funcs.funcs_lstm_multi import TemperatureDataset_multi
 
+torch.set_float32_matmul_precision('medium')
 
 forecast_var = 'temp'
 lite = '../Data/stunden/2016_resample_stunden.nc'

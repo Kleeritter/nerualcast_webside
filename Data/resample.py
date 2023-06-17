@@ -63,8 +63,8 @@ def resample_stunden(filelist, years):
                 "wind_dir_50", "gust_10", "gust_50", "rain","Geneigt CM-11","diffuscmp11","globalrcmp11"]# "globalrcm11"]
         values = ds[vars].isel(time=time_index.minute % 60 == 0)  # time_index.minute%10==0
         print(len(values["time"]))
-        start_date = str(years[i])+'-01-01'
-        end_date = str(years[i])+'-12-31'
+        start_date = str(years[i])+'-01-01 00:00:00'
+        end_date = str(years[i])+'-12-31 23:00:00'
         hourly_range = pd.date_range(start=start_date, end=end_date, freq='H')
         dfs = pd.DataFrame(index=hourly_range)
         #dfs = dfs.join(values.to_dataframe())#pd.concat([dfs,values.to_dataframe()],join="inner")
@@ -96,8 +96,8 @@ def resample_stunden(filelist, years):
         # Speichern des resultierenden xarray.Dataset-Objekts in einer neuen NetCDF-Datei
         dfs = dfs.join(values.to_dataframe())#, left_index=True, right_index=True)#dfs.join(values).asfreq('H')
         print(dfs)
-        groups = dfs.groupby(pd.Grouper(freq='D'))
-        missing_days = [group for group, group_df in groups if len(group_df) - group_df['temp'].count() > 3]
+        #groups = dfs.groupby(pd.Grouper(freq='D'))
+        #missing_days = [group for group, group_df in groups if len(group_df) - group_df['temp'].count() > 3]
         #print(dfs.loc[missing_days[0]])
         # Approximiere fehlende Stundenwerte (max. 3 aufeinanderfolgende Stunden)
         #for day in missing_days:

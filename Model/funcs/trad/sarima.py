@@ -11,6 +11,7 @@ def sarima(data):
     #temperature = df[forecast_var][startindex:endindex]
 
     train= data
+    #print(train)
     train.index = pd.DatetimeIndex(train.index.values,
                                    freq="H")
     # Erstellen und fitten Sie das SARIMA-Modell
