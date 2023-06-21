@@ -88,6 +88,8 @@ class TFT_Modell(pl.LightningModule):
 
         # Positionale Encoding-Schicht
         device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+        #print(self.device)
+        self.devices=device
         self.positional_encoding = self.get_positional_encoding(hidden_dim).to(device)
         self.input_pos_embedding = torch.nn.Embedding(1024, embedding_dim=hidden_dim)
         self.target_pos_embedding = torch.nn.Embedding(1024, embedding_dim=hidden_dim)
@@ -104,8 +106,9 @@ class TFT_Modell(pl.LightningModule):
         self.fc = nn.Linear(hidden_dim, output_dim)
         self.do = nn.Dropout(p=self.dropout)
         self.ff=nn.Linear(window_size,forecast_horizont)
-    def get_positional_encoding(self, d_model, max_len=1000, device="cuda:0"):
+    def get_positional_encoding(self, d_model, max_len=1000):#"cuda:0"):
         # Positionale Encoding-Schicht erzeugen
+        #print(self.devices)
         pe = torch.zeros(max_len, d_model)
         position = torch.arange(0, max_len, dtype=torch.float).unsqueeze(1)
         div_term = torch.exp(torch.arange(0, d_model, 2).float() * (-math.log(10000.0) / d_model))
@@ -113,7 +116,7 @@ class TFT_Modell(pl.LightningModule):
         pe[:, 1::2] = torch.cos(position * div_term)
         positional_encoding = pe.unsqueeze(0)
         #device = next(self.parameters()).device
-        positional_encoding = positional_encoding.to(device)
+        positional_encoding = positional_encoding.to(self.devices)
         return positional_encoding
     def forward(self, x):
         # Eingabe-Embedding

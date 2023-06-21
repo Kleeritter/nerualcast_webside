@@ -23,14 +23,15 @@ random.seed(42)
 # Setze den Random Seed für numpy
 np.random.seed(42)
 
+torch.set_float32_matmul_precision('medium')
 def objective(trial):
     # Define the hyperparameters to optimize
-    learning_rate = trial.suggest_float('learning_rate', 1e-5, 1e-2,log=True)
-    weight_decay = trial.suggest_float('weight_decay', 1e-5, 1e-2,log=True)
+    learning_rate = trial.suggest_float('learning_rate', 1e-6, 1e-1,log=True)
+    weight_decay = trial.suggest_float('weight_decay', 1e-6, 1e-1,log=True)
     hidden_size = trial.suggest_categorical('hidden_size', [1,2,4,8,16, 32, 64,128])
     #optimizer  = trial.suggest_categorical('optimizer', ["Adam","AdamW"])
     #dropout = trial.suggest_categorical('dropout', [0,0.2,0.5])
-    num_layers = trial.suggest_categorical('num_layers', [1, 2, 3])
+    num_layers = trial.suggest_categorical('num_layers', [1, 2, 3,4])
     batchsize = trial.suggest_categorical('batchsize', [6,12,24,8])
     weight_intiliazier = trial.suggest_categorical('weight_intiliazier', ["None", "xavier","kaiming","normal"])
     window_size= trial.suggest_categorical('window_size', [24,48,72,24*7,24*2*7,24*7*3,24*7*4])
@@ -65,7 +66,7 @@ def objective(trial):
     return trainer.callback_metrics['val_loss'].item()
 
 
-study = optuna.create_study(direction='minimize', storage='sqlite:///storage/database.db',study_name="LSTM-Single_improved_batch")
-study.optimize(objective, n_trials=50)
+study = optuna.create_study(direction='minimize', storage='sqlite:///storage/database.db',study_name="LSTM-Single_improved_batcher")
+study.optimize(objective, n_trials=100)
 best_params = study.best_trial.params
 print(best_params)

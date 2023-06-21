@@ -15,8 +15,8 @@ random.seed(42)
 
 # Setze den Random Seed für numpy
 np.random.seed(42)
-forecast_vars=["wind_dir_50",'temp',"press_sl","humid","diffuscmp11","globalrcmp11","gust_10","gust_50", "rain", "wind_10", "wind_50"]
-#forecast_var = 'temp'
+#forecast_vars=["wind_dir_50",'temp',"press_sl","humid","diffuscmp11","globalrcmp11","gust_10","gust_50", "rain", "wind_10", "wind_50"]
+forecast_vars = ['temp']
 window_sizes= [6,12,24,48,72,24*7,24*2*7,24*7*3,24*7*4]
 #window_size= 24
 lite = '../Data/stunden/2016_resample_stunden.nc'

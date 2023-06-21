@@ -1,15 +1,21 @@
 import torch
 import pytorch_lightning as pl
 from torch.utils.data import Dataset
+from sklearn.preprocessing import MinMaxScaler
 
 class TemperatureDataset(Dataset):
     def __init__(self, file_path,forecast_horizont=24,window_size=24,forecast_var="temp"):
         import xarray as xr
         self.data = xr.open_dataset(file_path)[forecast_var]#.valuesmissing_values_mask = dataset['temp'].isnull()
+        print("max:", max(self.data.values))
+        print("min:", min(self.data.values))
+        scaler = MinMaxScaler(feature_range=(0, 1))
+        self.data=scaler.fit_transform([[x] for x in self.data]).flatten()
         self.length = len(self.data) - window_size
         self.forecast_horizont = forecast_horizont
         self.window_size = window_size
         self.forecast_var=forecast_var
+
 
     def __len__(self):
         return self.length
@@ -21,8 +27,8 @@ class TemperatureDataset(Dataset):
         forecast_horizon = self.forecast_horizont  # How many hours to predict (24 hours)
         start_idx = idx
         end_idx = idx + window_size
-        window_data = self.data[start_idx:end_idx].values
-        target = self.data[end_idx:end_idx+forecast_horizon].values
+        window_data = self.data[start_idx:end_idx]#.values
+        target = self.data[end_idx:end_idx+forecast_horizon]#.values
 
         # Normalize window data and target
         if self.forecast_var == "wind_dir_50":
@@ -60,14 +66,19 @@ class TemperatureDataset(Dataset):
                 target = normalized_directions_deg_tar
             except:
                 target = np.zeros_like(target)
-        else:
-            window_data = (window_data - np.mean(window_data)) / np.std(window_data)#, ddof=1)
-            std_target = np.std(target)#, ddof=1)
-            if std_target != 0:
-                target = (target - np.mean(target)) / std_target
-            else:
-                target = np.zeros_like(target)
+        #else:
+            #window_data = (window_data - np.mean(window_data)) / np.std(window_data)#, ddof=1)
+            #scaler = MinMaxScaler(feature_range=(0, 1))
+            #<print(window_data)
+            #window_data=scaler.fit_transform([[x] for x in window_data]).flatten()
+            #print(window_data)
+            # std_target = np.std(target)#, ddof=1)
+            # if std_target != 0:
+            #     target = (target - np.mean(target)) / std_target
+            #else:
+            #     target = np.zeros_like(target)
 
+            #target=scaler.fit_transform([[x] for x in target]).flatten()
 
 
         # Check if target has exactly 24 hours, otherwise adjust it

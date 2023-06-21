@@ -1,4 +1,4 @@
-from sklearn import preprocessing
+from sklearn.preprocessing import MinMaxScaler
 import torch
 from torch.utils.data import Dataset, DataLoader
 import torch.nn as nn
@@ -6,6 +6,7 @@ import pytorch_lightning as pl
 import numpy as np
 import random
 import xarray as xr
+
 pl.seed_everything(42)
 
 # Setze den Random Seed für torch
@@ -20,8 +21,44 @@ np.random.seed(42)
 
 class TemperatureDataset_multi(Dataset):
     def __init__(self, file_path,forecast_horizont=24,window_size=24,forecast_var="temp"):
-        self.data = xr.open_dataset(file_path)[["wind_dir_50","Geneigt CM-11",'temp',"press_sl","humid","diffuscmp11","globalrcmp11","gust_10","gust_50", "rain", "wind_10", "wind_50"]]#.valuesmissing_values_mask = dataset['temp'].isnull()
+        self.data = xr.open_dataset(file_path)[["wind_dir_50","Geneigt CM-11",'temp',"press_sl","humid","diffuscmp11","globalrcmp11","gust_10","gust_50", "rain", "wind_10", "wind_50"]].to_dataframe()#.valuesmissing_values_mask = dataset['temp'].isnull()
         self.length = len(self.data[forecast_var]) - window_size
+       # scaler = MinMaxScaler(feature_range=(0, 1))
+       # self.data=scaler.fit_transform([[x] for x in self.data]).flatten()
+        for column in self.data.columns:
+            if column== "wind_dir_50":
+                # Extrahiere die Windrichtungen
+                wind_directions_deg = self.data[column].values
+
+                # Konvertiere die Windrichtungen in Bogenmaß
+                wind_directions_rad = np.deg2rad(wind_directions_deg)
+
+                # Berechne die Sinus- und Kosinus-Werte der Windrichtungen
+                sin_directions = np.sin(wind_directions_rad)
+                cos_directions = np.cos(wind_directions_rad)
+
+                # Kombiniere Sinus- und Kosinus-Werte zu einer einzigen Spalte
+                combined_directions = np.arctan2(sin_directions, cos_directions)
+
+                # Skaliere die kombinierten Werte auf den Bereich von 0 bis 1
+                scaler = MinMaxScaler(feature_range=(0, 1))
+                scaled_directions = scaler.fit_transform(combined_directions.reshape(-1, 1)).flatten()
+
+                self.data[column] = scaled_directions
+            else:
+                # Erstelle einen neuen Min-Max-Scaler für jede Spalte
+                scaler = MinMaxScaler()
+
+                # Extrahiere die Werte der aktuellen Spalte und forme sie in das richtige Format um
+                values = self.data[column].values.reshape(-1, 1)
+
+                # Skaliere die Werte der Spalte
+                scaled_values = scaler.fit_transform(values)
+
+                # Aktualisiere die Daten mit den skalierten Werten
+                self.data[column] = scaled_values.flatten()
+
+        print(self.data)
         self.forecast_horizont = forecast_horizont
         self.window_size = window_size
         self.forecast_var = forecast_var
@@ -32,23 +69,23 @@ class TemperatureDataset_multi(Dataset):
     def __getitem__(self, idx):
         start_idx = idx
         end_idx = idx + self.window_size
-        window_data = self.data.isel(index=slice(start_idx, end_idx)).to_array().values#self.data[start_idx:end_idx].values
-        target = self.data[self.forecast_var][end_idx:end_idx+self.forecast_horizont].values
-        window_data_normalized = np.zeros((window_data.shape[0],self.window_size))#np.zeros_like(window_data)
+        window_data = self.data.iloc[start_idx:end_idx]#isel(index=slice(start_idx, end_idx)).to_array()#.values#self.data[start_idx:end_idx].values
+        target = self.data[self.forecast_var][end_idx:end_idx+self.forecast_horizont]#.values
+       # window_data_normalized = np.zeros((window_data.shape[0],self.window_size))#np.zeros_like(window_data)
         #print(window_data_normalized)
 
-        for i in range(window_data.shape[0]):
-            if i != 0:
-                variable = window_data[i, :]
-                mean = np.mean(variable)
-                std = np.std(variable)
-                if std != 0:
-                    variable_normalized = (variable - mean) / std
-                else:
-                    variable_normalized = np.zeros_like(variable)
-                window_data_normalized[i, :] = variable_normalized
-            else:
-                variable = window_data[i, :]
+        #for i in range(window_data.shape[0]):
+         #   if i != 0:
+          #      variable = window_data[i, :]
+           #     mean = np.mean(variable)
+            #    std = np.std(variable)
+             #   if std != 0:
+              #      variable_normalized = (variable - mean) / std
+              #  else:
+               #     variable_normalized = np.zeros_like(variable)
+                #window_data_normalized[i, :] = variable_normalized
+            #else:
+             #   variable = window_data[i, :]
                 #print(variable)
                 #normalized_directions = variable % 360
                 #numeric_directions = (normalized_directions / 45).astype(int) % 8
@@ -57,57 +94,57 @@ class TemperatureDataset_multi(Dataset):
                 #enc =np.transpose(encoder.fit_transform(windrichtungen.reshape(-1, 1)))
                 #for j in range(0,7):
                  #   window_data_normalized[i+j, :] = enc[j]#
-                wind_directions_rad = np.deg2rad(variable)
+              #  wind_directions_rad = np.deg2rad(variable)
                 #print(wind_directions_rad)
                 # Berechnen des Durchschnitts der Windrichtungen in Bogenmaß
-                mean_direction_rad = np.mean(wind_directions_rad)
+               # mean_direction_rad = np.mean(wind_directions_rad)
 
                 # Konvertieren des Durchschnitts zurück in Grad
-                mean_direction_deg = np.rad2deg(mean_direction_rad)
+                #mean_direction_deg = np.rad2deg(mean_direction_rad)
 
                 # Subtrahieren des mittleren Winkels von allen Windrichtungen
-                normalized_directions_deg = variable- mean_direction_deg
+                #normalized_directions_deg = variable- mean_direction_deg
                 #print(normalized_directions_deg)
                 # Anpassen der negativen Werte auf den positiven Bereich (0-360 Grad)
-                normalized_directions_deg = (normalized_directions_deg + 360) % 360
+                #normalized_directions_deg = (normalized_directions_deg + 360) % 360
                 #print(normalized_directions_deg)
-                window_data_normalized[i, :] = normalized_directions_deg
+                #window_data_normalized[i, :] = normalized_directions_deg
 
-        if self.forecast_var == "wind_dir_50":
-            try:
-                wind_directions_rad_tar = np.deg2rad(target)
-
+        #if self.forecast_var == "wind_dir_50":
+         #   try:
+          #      wind_directions_rad_tar = np.deg2rad(target)
+#
                 # Berechnen des Durchschnitts der Windrichtungen in Bogenmaß
-                mean_direction_rad_tar = np.mean(wind_directions_rad_tar)
+ #               mean_direction_rad_tar = np.mean(wind_directions_rad_tar)
 
                 # Konvertieren des Durchschnitts zurück in Grad
-                mean_direction_deg_tar = np.rad2deg(mean_direction_rad_tar)
+  #              mean_direction_deg_tar = np.rad2deg(mean_direction_rad_tar)
 
                 # Subtrahieren des mittleren Winkels von allen Windrichtungen
-                normalized_directions_deg_tar = target - mean_direction_deg_tar
+   #             normalized_directions_deg_tar = target - mean_direction_deg_tar
 
                 # Anpassen der negativen Werte auf den positiven Bereich (0-360 Grad)
-                normalized_directions_deg_tar = (normalized_directions_deg_tar + 360) % 360
+    #            normalized_directions_deg_tar = (normalized_directions_deg_tar + 360) % 360
 
-                target = normalized_directions_deg_tar
-            except:
-                target = np.zeros_like(target)
+     #           target = normalized_directions_deg_tar
+      #      except:
+       #         target = np.zeros_like(target)
 
-        else:
-            std_target = np.std(target)#, ddof=1)
-            if std_target != 0:
-                target = (target - np.mean(target)) / std_target
-            else:
-                target = np.zeros_like(target)
+        #else:
+         #   std_target = np.std(target)#, ddof=1)
+          #  if std_target != 0:
+             #   target = (target - np.mean(target)) / std_target
+           # else:
+            #    target = np.zeros_like(target)
 
         # Check if target has exactly 24 hours, otherwise adjust it
         if target.shape[0] < self.forecast_horizont:
             target = np.pad(target, ((0, self.forecast_horizont - target.shape[0])), mode='constant')
         # Convert to torch tensors
-        window_data = window_data_normalized.transpose(1, 0)
+        #window_data = window_data_normalized.transpose(1, 0)
         #print(window_data)
-        target = target.reshape((self.forecast_horizont,))
-        window_data = torch.from_numpy(window_data).float()#[:, np.newaxis]).float()
+        target = np.array(target).reshape((self.forecast_horizont,))
+        window_data = torch.from_numpy(np.array(window_data)).float()#[:, np.newaxis]).float()
         target = torch.from_numpy(target).float()
         #print(window_data.shape)
         return window_data, target

@@ -10,7 +10,7 @@ forecast_var = 'temp'
 # Setzen Sie die Zufallssaat für die GPU
 # Setze den Random Seed für PyTorch
 pl.seed_everything(42)
-
+torch.set_float32_matmul_precision('medium')
 # Setze den Random Seed für torch
 torch.manual_seed(42)
 
@@ -25,13 +25,13 @@ np.random.seed(42)
 
 #Hyper Parameters:
 window_size = 24*7*4#168
-learning_rate =0.00005#0.00028321349862445627
-weight_decay = 0.0001#6.814701853104705e-05#
-hidden_size = 32#64
+learning_rate =0.00028321349862445627#0.00005#
+weight_decay =6.814701853104705e-05# 0.0001#
+hidden_size =64#32
 optimizer= "Adam"
-num_layers=1#2
+num_layers=2#1
 dropout=0#0.5
-weight_initializer="None" #"kaiming"
+weight_initializer="kaiming"
 
 training_data_path = 'opti/storage/training_data_lstm_single_train_' + forecast_var + "_" + str(window_size) + '.pt'
 val_data_path = 'opti/storage/training_data_lstm_single_val_' + forecast_var + "_" + str(window_size) + '.pt'
@@ -55,4 +55,4 @@ trainer = pl.Trainer(logger=logger,max_epochs=50, accelerator="auto",devices="au
 trainer.fit(model, train_loader,val_loader)
 
   # Verwende hier den entsprechenden Dataloader (z.B. val_loader)
-torch.save(model.state_dict(), 'output/lstm_uni/'+forecast_var+'unoptimiert.pth')
+torch.save(model.state_dict(), 'output/lstm_uni/'+forecast_var+'optimierter.pth')

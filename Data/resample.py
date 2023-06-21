@@ -72,7 +72,7 @@ def resample_stunden(filelist, years):
         # Schleife durch alle Variablen im xarray.Dataset-Objekt
         for var_name, var in values.variables.items():
             # Resampling der Variablen auf stündliche Werte
-            if var_name != "time" and values[var_name].isnull().all() != True and var_name=="temp":
+            if var_name != "time" and values[var_name].isnull().all() != True:# and var_name=="temp":
                 # Resampling auf stündliche Werte
                 if var_name == "rain":
                     hourly_var = ds[var_name].resample(time='1H', origin="epoch").sum()
