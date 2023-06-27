@@ -1,0 +1,7 @@
+batchsize: 24
+hidden_size: 64
+learning_rate: 0.00028321349862445627
+num_layers: 2
+weight_decay: 6.814701853104705e-05
+weight_intiliazier: kaiming
+window_size: 24*7*4

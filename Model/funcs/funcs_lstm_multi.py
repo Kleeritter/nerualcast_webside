@@ -58,7 +58,7 @@ class TemperatureDataset_multi(Dataset):
                 # Aktualisiere die Daten mit den skalierten Werten
                 self.data[column] = scaled_values.flatten()
 
-        print(self.data)
+        #print(self.data)
         self.forecast_horizont = forecast_horizont
         self.window_size = window_size
         self.forecast_var = forecast_var

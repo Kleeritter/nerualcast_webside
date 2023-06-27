@@ -24,6 +24,7 @@ def end_index_test(nc_path,gesuchtes_datum,window_size=24,forecast_horizon=24):
     return end_index_test
 import numpy as np
 from sklearn.metrics import mean_squared_error
+import yaml
 
 # Setze den Random Seed für numpy
 np.random.seed(42)
@@ -37,23 +38,23 @@ def skill_score(actual_values, prediction, reference_values):
     return sc
 
 
-def lstm_uni(modell,real_valueser,start_index, end_index,forecast_horizon=24,window_size=24):
+def lstm_uni(modell,real_valueser,start_index, end_index,forecast_horizon=24,window_size=24, hyper_params_path="../opti/output/lstm_single/best_params_lstm_singletemp_org.yaml"):
     from funcs.funcs_lstm_single import TemperatureModel
     import numpy as np
     import torch
     from sklearn.preprocessing import MinMaxScaler
     checkpoint_path = modell
     checkpoint = torch.load(checkpoint_path)
-    window_size = 24 * 7 * 4  # 168
-    learning_rate = 0.00028321349862445627  # 0.00005#
-    weight_decay = 6.814701853104705e-05  # 0.0001#
-    hidden_size = 64  # 32
+    #window_size = 24 * 7 * 4  # 168
+    #learning_rate = 0.00028321349862445627  # 0.00005#
+    #weight_decay = 6.814701853104705e-05  # 0.0001#
+    #hidden_size = 64  # 32
     optimizer = "Adam"
-    num_layers = 2  # 1
+    #num_layers = 2  # 1
     dropout = 0  # 0.5
     weight_initializer = "kaiming"
-    model  = TemperatureModel(hidden_size=hidden_size, learning_rate=learning_rate, weight_decay=weight_decay,optimizer=optimizer,num_layers=num_layers,dropout=dropout,weight_intiliazier=weight_initializer)
-  # Ersetze "YourLSTMModel" durch den tatsächlichen Namen deines Modells
+    hyper_params=load_hyperparameters(hyper_params_path)
+    model  = TemperatureModel(hidden_size=hyper_params["hidden_size"], learning_rate=hyper_params["learning_rate"], weight_decay=hyper_params["weight_decay"],optimizer=optimizer,num_layers=hyper_params["num_layers"],dropout=dropout,weight_intiliazier=hyper_params["weight_intiliazier"])
     model.load_state_dict(checkpoint)  # ['state_dict'])
     model.eval()
     sliding_window = []  # Liste für das Sliding Window
@@ -443,3 +444,8 @@ def conv(modell,data,start_idx,end_idx):
     #denormalized_values=np.arange(0,len(denormalized_values))
     #print(denormalized_values)
     return denormalized_values
+
+def load_hyperparameters(file_path):
+    with open(file_path, 'r') as file:
+        hyperparameters = yaml.safe_load(file)
+    return hyperparameters

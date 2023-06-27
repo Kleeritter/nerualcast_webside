@@ -36,7 +36,7 @@ univariant_model_path = '../Model/output/lstm_uni/'+forecast_var+'optimierter.pt
 multivariant_model_path = '../Model/output/lstm_multi/'+forecast_var+'_unoptimiert.pth' # Replace with the actual path to your model
 tft_model_path='../Model/output/tft/'+forecast_var+'._unoptimiert.pth' # Replace with the actual path to your model
 
-
+lstm_uni_params='../Model/opti/output/lstm_single/best_params_lstm_singletemp_org.yaml'
 
 
 learning_rate =0.00005
@@ -48,7 +48,7 @@ dropout=0
 #print("koksnot")
 start_index_test = forecast_data.index.get_loc(dt)
 
-references=np.load("reference_new.npy").flatten()
+references=np.load("sarima/reference_temp_.npy").flatten()
 
 #print(forecast_data.iloc[-1])
 
@@ -86,7 +86,34 @@ def fullsarima():
     return
 
 
+def litesarima():
+    var_list = [
+        "wind_dir_50"]  # , "Geneigt CM-11", 'temp', "press_sl", "humid", "diffuscmp11", "globalrcmp11", "gust_10", "gust_50","rain", "wind_10", "wind_50"]
+    for var in var_list:
+        print(var)
+        referencor=[]
+        for window, last_window in tqdm(zip(range(window_size, len(forecast_data.index.tolist()), forecast_horizon),
+                                       range(0, len(forecast_data.index.tolist()) - window_size,
+                                             forecast_horizon))):
+            #print(forecast_data[var][last_window:window])
+            refenrence = sarima.sarima(forecast_data[var][last_window:window])
+            referencor.append(refenrence)
+        np.save(file="sarima/reference"+var,arr=np.array(referencor))
+    return
 
+def sarima_netcdf():
+    var_list = [
+        "wind_dir_50"]  # , "Geneigt CM-11", 'temp', "press_sl", "humid", "diffuscmp11", "globalrcmp11", "gust_10", "gust_50","rain", "wind_10", "wind_50"]
+    data = {}
+    for var in var_list:
+        references_var = np.load("sarima/reference_"+var+".npy").flatten()
+        data[var] = references_var
+    df = pd.DataFrame(data)
+    output_file = "forecast_sarima.nc"
+    df = df.set_index(pd.to_datetime(visual_data.index.tolist()), inplace=False)
+    df.index.name = "Datum"
+    df = xr.Dataset.from_dataframe(df)
+    df.to_netcdf(output_file)
 
 def forecast_lstm_uni():
     predicted_temp_uni = []
@@ -95,7 +122,7 @@ def forecast_lstm_uni():
                                          forecast_horizon)):
 
         predictions = lstm_uni(univariant_model_path, forecast_data[forecast_var], start_index=last_window,
-                               end_index=window)  # .insert(0, Messfrühling[0:24]),
+                               end_index=window,hyper_params_path=lstm_uni_params)  # .insert(0, Messfrühling[0:24]),
         predicted_temp_uni.append(predictions)
 
     data = pd.DataFrame({
@@ -152,7 +179,11 @@ def forecast_tft():
 
 
 #fullsarima()
-#forecast_lstm_uni()
+forecast_lstm_uni()
 #forecast_lstm_multi()
-
-forecast_tft()
+#litesarima()
+#sarima_netcdf()
+#forecast_tft()
+#var= "wind_dir_50"
+#references_var = np.load("sarima/reference_"+var+".npy").flatten()
+#print(references_var)

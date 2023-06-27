@@ -9,6 +9,7 @@ from funcs.funcs_lstm_single import TemperatureDataset, TemperatureModel
 from optuna.integration import PyTorchLightningPruningCallback
 import random
 import numpy as np
+import yaml
 forecast_var = 'temp'
 # Setzen Sie die Zufallssaat für die GPU
 # Setze den Random Seed für PyTorch
@@ -51,7 +52,7 @@ def objective(trial):
     # Define the Lightning callbacks and trainer settings
     early_stopping = EarlyStopping('val_loss', patience=10, mode='min')
     pruning_callback = PyTorchLightningPruningCallback(trial, monitor='val_loss')
-    trainer = pl.Trainer(logger=logger, max_epochs=60, accelerator="auto", devices="auto",
+    trainer = pl.Trainer(logger=logger, max_epochs=30, accelerator="auto", devices="auto",
                         callbacks=[early_stopping,pruning_callback], deterministic=True,enable_progress_bar=False)
 
     # Train the model using the pre-loaded train and validation loaders
@@ -66,7 +67,10 @@ def objective(trial):
     return trainer.callback_metrics['val_loss'].item()
 
 
-study = optuna.create_study(direction='minimize', storage='sqlite:///storage/database.db',study_name="LSTM-Single_improved_batcher")
+study = optuna.create_study(direction='minimize', storage='sqlite:///storage/database.db',study_name="LSTM-Single_tester")
 study.optimize(objective, n_trials=100)
 best_params = study.best_trial.params
 print(best_params)
+# Erhalte die besten Parameter und speichere sie in einer Datei
+with open('output/lstm_single/best_params_lstm_single'+forecast_var+'.yaml', 'w') as file:
+    yaml.dump(best_params, file)
